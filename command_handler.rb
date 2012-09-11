@@ -60,7 +60,7 @@ class CommandHandler
     when "setcheader"
       @client.set_channel_header args[1], args[2..n]
     when "getheader"
-      @client.get_header
+      @client.get_header args[1]
     when "!"
       @client.data_frame args[1], args[2], args[3..n]
     end

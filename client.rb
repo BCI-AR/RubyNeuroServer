@@ -12,7 +12,7 @@ class Client
   }
   @@instances_by_index = {}
 
-  attr_reader :index
+  attr_reader :index, :config, :type
 
   def is_displaying?
     @is_displaying
@@ -40,7 +40,7 @@ class Client
   end
 
   def role
-    execute { [ SUCCESS, @role ] }
+    execute { [ SUCCESS, @type ] }
   end
 
   def control
@@ -73,27 +73,31 @@ class Client
     }
   end
 
-  def get_header
+  def get_header(client_id)
     execute {
-      next type_request_invalid_to_role "getheader", "DISPLAY" unless @role == "DISPLAY"
-      [ SUCCESS, @config.to_s ]
+      next type_request_invalid_to_role "getheader", "DISPLAY" unless @type == "DISPLAY"
+      c = client_by_id client_id
+      next c.type_request_invalid_to_role "getheader", "EEG" unless c.type == "EEG"
+      [ SUCCESS, c.config.to_s ]
     }
   end
 
   def set_header(headers)
     execute {
-      next type_request_invalid_to_role "setheader", "EEG" unless @role == "EEG"
-      @config.header = EDFHeader.new Hash[headers]
-      @config.header.start_time = Time.now
+      next type_request_invalid_to_role "setheader", "EEG" unless @type == "EEG"
+      headers = Hash[*headers]
+      headers[:start_time] = Time.now
+      @config.header ||= EDFHeader.new
+      @config.header.update_attributes headers
       SUCCESS
     }
   end
 
   def set_channel_header(channel, headers)
     execute {
-      next type_request_invalid_to_role "setcheader", "EEG" unless @role == "EEG"
-      @config.channel_headers[channel.to_i] = EDFChannelHeader.new Hash[headers]
-      @config.header.start_time = Time.now
+      next type_request_invalid_to_role "setcheader", "EEG" unless @type == "EEG"
+      @config.channel_headers[channel.to_i] ||= EDFChannelHeader.new
+      @config.channel_headers[channel.to_i].update_attributes Hash[*headers]
       SUCCESS
     }
   end
@@ -101,9 +105,7 @@ class Client
   def data_frame(packet_counter, channel_count, data)
     execute {
       next invalid_channel_count(channel_count) unless channel_count.to_i.between? 0, MAX_CHANNELS
-      puts @@instances[:display]
       @@instances[:display].each { |c|
-        puts c.is_displaying?
         c.send_message "! 0 #{data.join ' '}\r\n" if c.is_displaying?
       }
       SUCCESS
@@ -112,7 +114,7 @@ class Client
 
   def watch(state)
     execute {
-      next invalid_command "watch" unless @role == "DISPLAY"
+      next invalid_command "watch" unless @type == "DISPLAY"
       @is_displaying = state
       SUCCESS
     }
@@ -120,9 +122,8 @@ class Client
 
   def go(recv_index, msg="go")
     execute {
-      next type_request_invalid_to_role "go", "CONTROLLER" unless @role == "CONTROLLER"
-      @role == "CONTROLLER"
-      receiver = @@instances_by_index[recv_index.to_i]
+      next type_request_invalid_to_role "go", "CONTROLLER" unless @type == "CONTROLLER"
+      receiver = client_by_id recv_index
       puts "Sending [#{msg}] from #{@index} to #{receiver.index}"
       receiver.send_message msg
       SUCCESS
@@ -130,7 +131,7 @@ class Client
   end
 
   def close
-    @@instances[@role.downcase.to_sym].delete self
+    @@instances[@type.downcase.to_sym].delete self
     @@instances_by_index.delete self.index
     @finished = true
   end
@@ -145,6 +146,13 @@ class Client
     update_last_alive
   end
 
+  def type_request_invalid_to_role(type, role)
+    [
+      BAD_REQUEST,
+      "Only #{role} accepts #{type} request. #{@index} role is #{@type}."
+    ]
+  end
+
   private
   def update_last_alive
     @last_alive = Time.now
@@ -154,13 +162,13 @@ class Client
     begin
       status, message = yield
       send status, message
-    rescue
-      send "ERROR"
+    rescue Exception => e
+      send "ERROR", e.message
     end
   end
 
   def invalid_command(cmd)
-    [ BAD_REQUEST, "#{cmd} command cannot be sent to client with role #{@role}" ]
+    [ BAD_REQUEST, "#{cmd} command cannot be sent to client with role #{@type}" ]
   end
 
   def controller_already_set
@@ -169,12 +177,12 @@ class Client
   end
 
   def set_role(role)
-    unset = (@role.nil? or @role == "UNSET")
-    return [ BAD_REQUEST, "role already set to #{@role}" ] unless unset
+    unset = (@type.nil? or @type == "UNSET")
+    return [ BAD_REQUEST, "role already set to #{@type}" ] unless unset
     type = role.downcase.to_sym
     @@instances[type] << self
     @@instances[:unset].delete self unless type == :unset
-    @role = role
+    @type = role
     SUCCESS
   end
 
@@ -185,7 +193,9 @@ class Client
     ]
   end
 
-  def type_request_invalid_to_role(type, role)
-    [ BAD_REQUEST, "Only #{role} accepts #{type} request" ]
+  def client_by_id(id)
+    id = id.to_i
+    raise "Client #{id} does not exist" unless @@instances_by_index.include? id
+    @@instances_by_index[id]
   end
 end

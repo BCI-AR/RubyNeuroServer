@@ -1,10 +1,19 @@
 class Base
-  def initialize(params={})
-    params.each { |name, value| instance_variable_set "@#{name}", value }
+  def attributes
+    Hash[instance_variables.map { |name|
+      value = instance_variable_get name
+      value = "" if value.nil?
+      value = value.strftime "%Y-%m-%d/%H:%M:%S%z" if value.is_a? Time
+      [ name.to_s.delete("@"), value ]
+    }]
   end
 
-  def attributes
-    Hash[instance_variables.map { |name| [name, instance_variable_get(name)] } ]
+  def update_attributes(params={})
+    params.each {|name,value| instance_variable_set "@#{name}", value}
+  end
+
+  def to_s
+    attributes.to_a.flatten.join " "
   end
 end
 
@@ -19,7 +28,7 @@ class EDFHeader < Base
 end
 
 class EDFChannelHeader < Base
-	attr_accessor :channel_label
+	attr_accessor :label
 	attr_accessor :transducer_type
 	attr_accessor :dimension_unit   # physical dimension of channel, e.g. uV
 	attr_accessor :physical_minimal # minimal physical value (in above units)
@@ -41,7 +50,8 @@ class EDFConfig < Base
   end
 
   def to_s
-    (header.attributes.to_a + channel_headers.to_a).flatten.join " "
+    channel_attrs = @channel_headers.collect { |c| c.to_s }.flatten.join " "
+    [ header.to_s, channel_attrs ].join " "
   end
 end
 
