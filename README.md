@@ -19,21 +19,23 @@ Once connected, one can send NeuroServer commands:
     
 A list of available commands can be obtained sending help command:
 
-    help
-    hello: Healthcheck
-    close: Close client connection
-    role: Displays client role [CONTROLLER, EEG, DISPLAY]
-    control: Starts a CONTROLLER client, that can send commands to another clients
-    eeg: Starts an EEG client
-    display: Starts a DISPLAY client
-    status: Shows status of connected clients
-    go: Go command for controllers. go 0 activates a go trial in EEG device 0
-    nogo: No Go command for controllers
-    setheader: Sets EDFHeaders
-    setcheader: Sets EDFChannelHeaders
-    watch: Enables displays to receive data frames
-    unwatch: Disables displays to receive data frames
-    getheader: Prints all headers
+    hello:              Healthcheck
+    close:              Close client connection
+    role:               Displays client role [CONTROLLER, EEG, DISPLAY]
+    control:            Starts a CONTROLLER client, that can send commands to another clients
+    eeg:                Starts an EEG client
+    display:            Starts a DISPLAY client
+    status:             Shows status of connected clients
+    go N:               Go command for controllers. go 0 activates a go trial in EEG device 0
+    nogo N:             No Go command for controllers
+    setheader:          EEG command to set EDFHeaders
+    setcheader CH:      EEG command to set EDFChannelHeaders for channel CH
+    getheader N:        Display command to print all headers for EEG #N
+    watch:              Display command to enable data frames receipt
+    unwatch:            Display command to disable data frames receipt
+    ! P CC M1 M2..:     Data frame for each CC channels having P packet_size, with its Mi measures.
+                        M1, M2, M3, ... refers to the P * CC measures in each channel.
+                        It's broadcasted for all display clients that are in watch state.
 
 ## command_handler.rb
 It just interprets commands received from connected clients.
