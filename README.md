@@ -1,22 +1,24 @@
 # Ruby Neuro Server Components
 
 ## server.rb
-A simple socket implementation that accepts connections on port 8336 and spans a new thread for Client execution.
+A simple socket implementation that accepts connections on port 8336 and spans a new thread for Client execution. The server can be run with command:
 
-The server can be run with command:
-  ruby server.rb
+    ruby server.rb
   
 It can be tested with:
+
     $ telnet localhost 8336
     Trying 127.0.0.1...
     Connected to localhost.
     Escape character is '^]'.
   
 Once connected, one can send NeuroServer commands:
+
     hello
     200 OK
     
 A list of available commands can be obtained sending help command:
+
     help
     hello: Healthcheck
     close: Close client connection
@@ -52,7 +54,8 @@ Each role has a subset of commands available. Issuing a command that is not appl
 A Controller client can send messages to other connected clients. Currently, there are only two actions for controllers (go, nogo).
 Supposing two clients connected, the following example shows a control session between them:
 
-Controller Client
+##### Controller Client
+
     Escape character is '^]'.
     control
     200 OK
@@ -64,7 +67,8 @@ Controller Client
     nogo 2
     200 OK
 
-Another Client (any role)
+##### Another Client (any role)
+
     Escape character is '^]'.
     go
     nogo
@@ -78,7 +82,8 @@ Available header options can be found in data_structures.rb.
 #### Display
 A client display can be used to view current headers for other EEG clients. This example shows two EEG/Display sessions iteractions.
 
-EEG Client
+##### EEG Client
+
     Escape character is '^]'.
     eeg
     200 OK  
@@ -89,7 +94,7 @@ EEG Client
     setcheader 1 label ch2
     200 OK
 
-Display Client
+##### Display Client
     Escape character is '^]'.
     display
     200 OK
